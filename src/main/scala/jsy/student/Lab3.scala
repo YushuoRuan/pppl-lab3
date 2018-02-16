@@ -47,7 +47,6 @@ object Lab3 extends JsyApplication with Lab3Like {
       case Undefined => ???
       case S(s) => ???
       case Function(_, _, _) => Double.NaN
-      case hahahahaha => ???
     }
   }
   
