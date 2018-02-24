@@ -130,52 +130,36 @@ object Lab3 extends JsyApplication with Lab3Like {
       /* Inductive Cases */
       case Binary(bop, e1, e2) => bop match {
 
+
         case Lt | Le | Gt | Ge => B(inequalityVal(bop, eval(env, e1), eval(env, e2)))
-
-
-        case Minus => N(toNumber(eval(env, e1)) - toNumber(eval(env, e2)))
-        case Times => N(toNumber(eval(env, e1)) * toNumber(eval(env, e2)))
-        case Div => N(toNumber(eval(env, e1)) / toNumber(eval(env, e2)))
-        case Plus => (eval(env, e1), eval(env, e2)) match {
-          case (S(s1), S(s2)) => S(s1 + s2)
-          case (_, S(s)) => S(toStr(eval(env, e1)) + s)
-          case (S(s), _)=> S(s+toStr(eval(env,e2)))
-          case (v1, v2) => N(toNumber(v1) + toNumber(v2))
-          //case (_, _) => N(toNumber(eval(env, e1)) + toNumber(eval(env, e2)))
-        }
-
-
-
-
-        case Eq => (eval(env,e1), eval(env,e2)) match {
-          case (Function(_,_,_), _) => throw new DynamicTypeError(e)
-          case (_, Function(_,_,_)) => throw new DynamicTypeError(e)
+        case Eq => (e1, e2) match {
           case (S(s1), S(s2)) => if (s1 == s2) B(true) else B(false)
           case (Undefined, Undefined) => B(true)
           case (_, _) => if (toNumber(eval(env, e1)) == toNumber(eval(env, e2))) B(true) else B(false)
         }
-        case Ne => (eval(env,e1), eval(env,e2)) match {
-          case (Function(_,_,_), _) => throw new DynamicTypeError(e)
-          case (_, Function(_,_,_)) => throw new DynamicTypeError(e)
+        case Ne => (e1, e2) match {
           case (S(s1), S(s2)) => if (s1 != s2) B(true) else B(false)
           case (Undefined, Undefined) => B(false)
           case (_, _) => if (toNumber(eval(env, e1)) != toNumber(eval(env, e2))) B(true) else B(false)
         }
 
-        //case Or => if(toBoolean(eval(env, e1))) eval(env, e1) else eval(env, e2)
-        //case And => if(toBoolean(eval(env, e1))) eval(env, e2) else eval(env, e1)
 
-        case And => {
-          val v1 = eval(env, e1)
-          if (toBoolean(v1)) eval(env, e2) else v1
-        }
-        case Or => {
-          val v1 = eval(env, e1)
-          if (toBoolean(v1)) v1 else eval(env, e2)
+        case Minus => N(toNumber(eval(env, e1)) - toNumber(eval(env, e2)))
+        case Times => N(toNumber(eval(env, e1)) * toNumber(eval(env, e2)))
+        case Div => N(toNumber(eval(env, e1)) / toNumber(eval(env, e2)))
+        case Plus => (e1, e2) match{
+          case (_, S(s)) => S(toStr(eval(env, e1)) + s)
+          case (S(s), _)=> S(s+toStr(eval(env,e2)))
+          case (_, _) => N(toNumber(eval(env, e1)) + toNumber(eval(env, e2)))
         }
 
 
-        case Seq => eval(env, e1); eval(env, e2)
+        case Or => if(toBoolean(eval(env, e1))) eval(env, e1) else eval(env, e2)
+        case And => if(!toBoolean(eval(env, e1))) eval(env, e1) else eval(env, e2)
+
+
+        case Seq => eval(env, e1); eval(env , e2)
+
       }
       case Unary(uop, e1) => uop match{
         case Neg => N(-toNumber(eval(env, e1)))
@@ -238,61 +222,48 @@ object Lab3 extends JsyApplication with Lab3Like {
       // ****** Your cases here
       case Unary(Neg, v1) if isValue(v1) => N(-toNumber(v1))
       case Unary(Not, v1) if isValue(v1) => B(!toBoolean(v1))
-
-      case Binary(bop @(Lt|Le|Gt|Ge), v1, v2) if isValue(v1) && isValue(v2) => B(inequalityVal(bop, v1, v2))
-
-      case Binary(Seq, v1, v2) if isValue(v1) => v2
-
-
+      case Binary(Seq, v1, e2) if isValue(v1) => e2
       case Binary(Plus, v1, v2) if isValue(v1) && isValue(v2) => (v1, v2) match {
-        case (S(s1), S(s2)) => S(s1 + s2)
-        case (_, S(s)) => S(toStr(v1) + s)
-        case (S(s), _)=> S(s+toStr(v2))
+        case (S(s1), v2) => S(s1 + toStr(v2))
+        case (v1, S(s2)) => S(toStr(v1) + s2)
         case (v1, v2) => N(toNumber(v1) + toNumber(v2))
       }
-
-      case Binary(bop @(Plus | Minus | Times | Div), v1, v2) if isValue(v1) && isValue(v2) => (bop: @unchecked) match {
+      case Binary(bop @(Minus | Times | Div), v1, v2) if isValue(v1) && isValue(v2) => (bop: @unchecked) match {
         case Minus => N(toNumber(v1) - toNumber(v2))
         case Times => N(toNumber(v1) * toNumber(v2))
         case Div => N(toNumber(v1) / toNumber(v2))
-        case Plus => (v1, v2) match {
-          case (S(s1), S(s2)) => S(s1 + s2)
-          case (_, S(s)) => S(toStr(v1) + s)
-          case (S(s), _)=> S(s+toStr(v2))
-          case (v1, v2) => N(toNumber(v1) + toNumber(v2))
+      }
+
+      case Binary(bop @(Lt|Le|Gt|Ge), v1, v2) if isValue(v1) && isValue(v2) => B(inequalityVal(bop, v1, v2))
+      case Binary(bop @(Eq | Ne), v1, v2) if isValue(v1) && isValue(v2) => (v1, v2) match {
+        case (Function(_, _, _), _) => throw new DynamicTypeError(v1)
+        case (_, Function(_, _, _)) => throw new DynamicTypeError(v1)
+        case (v1, v2) => (bop: @unchecked) match {
+          case Eq => B(v1 == v2)
+          case Ne => B(v1 != v2)
         }
       }
 
-      case Binary(bop @(Eq | Ne), v1, v2) if isValue(v1) && isValue(v2) => bop match {
-        case Eq => (v1, v2) match {
-          case (Function(_,_,_), _) => throw new DynamicTypeError(e)
-          case (_, Function(_,_,_)) => throw new DynamicTypeError(e)
-          case (S(s1), S(s2)) => if (s1 == s2) B(true) else B(false)
-          case (Undefined, Undefined) => B(true)
-          case (_, _) => if (toNumber(v1) == toNumber(v2)) B(true) else B(false)
-        }
-        case Ne => (v1, v2) match {
-          case (Function(_,_,_), _) => throw new DynamicTypeError(e)
-          case (_, Function(_,_,_)) => throw new DynamicTypeError(e)
-          case (S(s1), S(s2)) => if (s1 != s2) B(true) else B(false)
-          case (Undefined, Undefined) => B(false)
-          case (_, _) => if (toNumber(v1) != toNumber(v2)) B(true) else B(false)
-        }
+      case Binary(And, v1, e2) if isValue(v1) => toBoolean(v1) match {
+        case true => e2
+        case false => v1
       }
 
-      case Binary(And, v1, v2) if isValue(v1) => if(toBoolean(v1)) v2 else v1
-      case Binary(Or, v1, v2) if isValue(v1) => if(toBoolean(v1)) v1 else v2
+      case Binary(Or, v1, e2) if isValue(v1) => toBoolean(v1) match {
+        case true => v1
+        case false => e2
+      }
 
 
       case Unary(Neg, v1) if isValue(v1) => N(-toNumber(v1))
       case Unary(Not, v1) if isValue(v1) => B(!toBoolean(v1))
 
-      case If(v1, v2, v3) if isValue(v1) => if(toBoolean(v1)) v2 else v3
+      case If(v1, e2, e3) if isValue(v1) => if(toBoolean(v1)) e2 else e3
 
-      case ConstDecl(x, v1, v2) if isValue(v1) => substitute(v2, v1, x)
+      case ConstDecl(x, v1, e2) if isValue(v1) => substitute(e2, v1, x)
       case Call(v1, v2) if isValue(v1) && isValue(v2) => v1 match {
-        case Function(None, x, v3) => substitute(v3, v2, x)
-        case Function(Some(x1), x2, v3) =>  substitute(substitute(v3, v1, x1), v2, x2)
+        case Function(None, x, e3) => substitute(e3, v2, x)
+        case Function(Some(x1), x2, e3) =>  substitute(substitute(e3, v1, x1), v2, x2)
         case _ => throw new DynamicTypeError(v1)
       }
 
